@@ -1,9 +1,6 @@
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
-import { db } from '../db.js';
-import { charge } from './payments.js';
+import { addCartItem, CartError, checkoutCart, getCart } from '../cart.js';
 import { broadcastEventUpdate } from '../ws.js';
-import type { TicketType } from '../types.js';
 
 export const ticketsRouter = Router();
 
@@ -20,47 +17,26 @@ ticketsRouter.post('/api/tickets/purchase', async (req, res) => {
     return;
   }
 
-  const type = db
-    .prepare(
-      `SELECT id, event_id as eventId, name, color, price_cents as priceCents, quota
-       FROM ticket_types WHERE id = ? AND event_id = ?`
-    )
-    .get(ticketTypeId, eventId) as TicketType | undefined;
+  try {
+    const existingCart = getCart(ownerEmail);
+    if (existingCart.items.length > 0) {
+      res.status(409).json({ error: 'active cart must be checked out or canceled first' });
+      return;
+    }
 
-  if (!type) {
-    res.status(404).json({ error: 'ticket type not found for this event' });
-    return;
+    addCartItem({ ownerEmail, eventId, ticketTypeId, quantity: 1 });
+    broadcastEventUpdate(eventId);
+
+    const result = await checkoutCart({ ownerEmail, cardNumber: payment.cardNumber });
+    for (const updatedEventId of result.eventIds) broadcastEventUpdate(updatedEventId);
+
+    res.status(201).json({ ticket: result.tickets[0] });
+  } catch (error) {
+    if (error instanceof CartError) {
+      for (const updatedEventId of error.eventIds) broadcastEventUpdate(updatedEventId);
+      res.status(error.status).json({ error: error.message, reason: error.reason });
+      return;
+    }
+    throw error;
   }
-
-  const sold = db
-    .prepare('SELECT COUNT(*) as c FROM tickets WHERE ticket_type_id = ?')
-    .get(type.id) as { c: number };
-  if (sold.c >= type.quota) {
-    res.status(409).json({ error: 'sold out' });
-    return;
-  }
-
-  const result = await charge({ amountCents: type.priceCents, cardNumber: payment.cardNumber });
-  if (result.status !== 'approved') {
-    res.status(402).json({ error: 'payment declined', reason: result.reason });
-    return;
-  }
-
-  const ticketId = `tkt_${randomUUID()}`;
-  db.prepare(
-    `INSERT INTO tickets (id, event_id, ticket_type_id, owner_email, purchased_at, charge_id)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(ticketId, eventId, type.id, ownerEmail, new Date().toISOString(), result.chargeId);
-
-  broadcastEventUpdate(eventId);
-
-  res.status(201).json({
-    ticket: {
-      id: ticketId,
-      eventId,
-      ticketTypeId: type.id,
-      ownerEmail,
-      chargeId: result.chargeId,
-    },
-  });
 });

@@ -13,7 +13,8 @@ export function useEventStream(onMessage: (msg: EventUpdated) => void) {
   handlerRef.current = onMessage;
 
   useEffect(() => {
-    const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:3001`;
+    const wsPort = import.meta.env.VITE_WS_PORT ?? '3001';
+    const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:${wsPort}`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (e) => {
       try {

@@ -7,6 +7,7 @@ import { eventsRouter } from './routes/events.js';
 import { paymentsRouter } from './routes/payments.js';
 import { ticketsRouter } from './routes/tickets.js';
 import { meRouter } from './routes/me.js';
+import { cartRouter } from './routes/cart.js';
 
 export function buildApp() {
   const app = express();
@@ -17,6 +18,7 @@ export function buildApp() {
 
   app.use(eventsRouter);
   app.use(paymentsRouter);
+  app.use(cartRouter);
   app.use(ticketsRouter);
   app.use(meRouter);
 

@@ -33,6 +33,26 @@ export interface MyTicket {
   priceCents: number;
 }
 
+export interface CartItem {
+  id: string;
+  eventId: string;
+  ticketTypeId: string;
+  ownerEmail: string;
+  quantity: number;
+  expiresAt: string;
+  ticketTypeName: string;
+  ticketTypeColor: string;
+  priceCents: number;
+  eventName: string;
+}
+
+export interface CartState {
+  eventId: string | null;
+  expiresAt: string | null;
+  items: CartItem[];
+  totalCents: number;
+}
+
 function userEmail(): string {
   return localStorage.getItem('userEmail') ?? '';
 }
@@ -63,6 +83,30 @@ export const api = {
   listEvents: () => http<{ events: Event[] }>('/api/events'),
   getEvent: (id: string) => http<EventWithTicketTypes>(`/api/events/${id}`),
   myTickets: () => http<{ tickets: MyTicket[] }>('/api/me/tickets'),
+  getCart: () => http<{ cart: CartState }>('/api/cart'),
+  addCartItem: (input: { eventId: string; ticketTypeId: string; quantity: number }) =>
+    http<{ cart: CartState }>('/api/cart/items', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  cancelCart: () =>
+    fetch('/api/cart', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Email': userEmail(),
+      },
+    }).then((res) => {
+      if (!res.ok) throw new Error(`${res.status} failed to cancel cart`);
+    }),
+  checkoutCart: (input: { cardNumber: string }) =>
+    http<{ tickets: Array<{ id: string }>; chargeId: string; amountCents: number }>(
+      '/api/cart/checkout',
+      {
+        method: 'POST',
+        body: JSON.stringify({ payment: { cardNumber: input.cardNumber } }),
+      }
+    ),
   purchase: (input: { eventId: string; ticketTypeId: string; cardNumber: string }) =>
     http<{ ticket: { id: string } }>('/api/tickets/purchase', {
       method: 'POST',

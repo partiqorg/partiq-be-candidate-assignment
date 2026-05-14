@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'node:http';
-import { db } from './db.js';
+import { remainingByTicketType } from './inventory.js';
 import type { WebSocketMessage } from './types.js';
 
 const clients = new Set<WebSocket>();
@@ -17,21 +17,9 @@ export function attachWebSocket(server: Server) {
 }
 
 export function broadcastEventUpdate(eventId: string) {
-  const rows = db
-    .prepare(
-      `SELECT tt.id as ticketTypeId,
-              tt.quota - (SELECT COUNT(*) FROM tickets t WHERE t.ticket_type_id = tt.id) AS remaining
-       FROM ticket_types tt
-       WHERE tt.event_id = ?`
-    )
-    .all(eventId) as Array<{ ticketTypeId: string; remaining: number }>;
-
-  const remainingByTicketType: Record<string, number> = {};
-  for (const r of rows) remainingByTicketType[r.ticketTypeId] = r.remaining;
-
   const message: WebSocketMessage = {
     type: 'event-updated',
-    data: { eventId, remainingByTicketType },
+    data: { eventId, remainingByTicketType: remainingByTicketType(eventId) },
   };
 
   const data = JSON.stringify(message);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { remainingByTicketType } from '../inventory.js';
 import type { Event, EventWithTicketTypes, TicketType } from '../types.js';
 
 export const eventsRouter = Router();
@@ -30,12 +31,8 @@ eventsRouter.get('/api/events/:id', (req, res) => {
     )
     .all(event.id) as TicketType[];
 
-  const ticketTypes = types.map((t) => {
-    const sold = db
-      .prepare('SELECT COUNT(*) as c FROM tickets WHERE ticket_type_id = ?')
-      .get(t.id) as { c: number };
-    return { ...t, remaining: t.quota - sold.c };
-  });
+  const remaining = remainingByTicketType(event.id);
+  const ticketTypes = types.map((t) => ({ ...t, remaining: remaining[t.id] ?? 0 }));
 
   const out: EventWithTicketTypes = { ...event, ticketTypes };
   res.json(out);

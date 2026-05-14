@@ -1,4 +1,4 @@
-import { db, resetDb } from './db.js';
+import { db, initializeInventory, resetDb } from './db.js';
 
 interface SeedTicketType {
   id: string;
@@ -73,6 +73,7 @@ export function seed() {
   });
 
   tx();
+  initializeInventory();
 }
 
 export function seedIfEmpty() {
