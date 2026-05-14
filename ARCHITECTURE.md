@@ -79,6 +79,28 @@ The server emits this whenever a ticket is created. The web app listens and upda
 - Returns `{ status: "approved", chargeId }` on success or `{ status: "declined", reason }` on failure
 - No idempotency. If you call it twice with the same input you get charged twice. This is on the TODO list.
 
+## Seeded data
+
+`seed.ts` populates two events and one demo ticket (Indie Night, Regular, owned by `demo@partiq.local`). Set the user bar in the web app to that email to see a pre-existing ticket in `/api/me/tickets` without buying anything.
+
+## Using transactions
+
+We use [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3), which is synchronous. Transactions look like this:
+
+```ts
+import { db } from './db.js';
+
+const tx = db.transaction((email: string) => {
+  const charge = db.prepare('INSERT INTO charges (id) VALUES (?)').run('ch_x');
+  db.prepare('INSERT INTO tickets (id, owner_email) VALUES (?, ?)').run('tkt_x', email);
+  return charge.changes;
+});
+
+tx('alice@example.com'); // runs everything inside BEGIN/COMMIT, rolls back on throw
+```
+
+You can also use `db.transaction(fn).immediate(...)` or `.exclusive(...)` if you need stronger locking semantics during contention.
+
 ## Things you can rely on
 
 - The server is small. Reading all of `server/src/` end-to-end takes 5–10 minutes.

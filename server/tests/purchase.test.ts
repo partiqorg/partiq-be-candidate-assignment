@@ -108,6 +108,18 @@ describe('POST /api/tickets/purchase — failure modes', () => {
       .expect(401);
   });
 
+  it('404 when ticketTypeId belongs to a different event', async () => {
+    await request(app)
+      .post('/api/tickets/purchase')
+      .set('X-User-Email', USER)
+      .send({
+        eventId: 'evt_rooftop',
+        ticketTypeId: 'tt_indie_regular',
+        payment: { cardNumber: '4242424242424242' },
+      })
+      .expect(404);
+  });
+
   it('402 when the card is declined', async () => {
     await request(app)
       .post('/api/tickets/purchase')
@@ -142,5 +154,46 @@ describe('POST /api/tickets/purchase — failure modes', () => {
         payment: { cardNumber: '4242424242424242' },
       })
       .expect(409);
+  });
+});
+
+describe('GET /api/me/tickets', () => {
+  it('401 without user header', async () => {
+    await request(app).get('/api/me/tickets').expect(401);
+  });
+
+  it('only returns tickets owned by the caller', async () => {
+    await request(app)
+      .post('/api/tickets/purchase')
+      .set('X-User-Email', 'alice@example.com')
+      .send({
+        eventId: 'evt_rooftop',
+        ticketTypeId: 'tt_rooftop_regular',
+        payment: { cardNumber: '4242424242424242' },
+      })
+      .expect(201);
+
+    await request(app)
+      .post('/api/tickets/purchase')
+      .set('X-User-Email', 'bob@example.com')
+      .send({
+        eventId: 'evt_rooftop',
+        ticketTypeId: 'tt_rooftop_regular',
+        payment: { cardNumber: '4242424242424242' },
+      })
+      .expect(201);
+
+    const aliceTickets = await request(app)
+      .get('/api/me/tickets')
+      .set('X-User-Email', 'alice@example.com')
+      .expect(200);
+
+    expect(aliceTickets.body.tickets).toHaveLength(1);
+    const bobTickets = await request(app)
+      .get('/api/me/tickets')
+      .set('X-User-Email', 'bob@example.com')
+      .expect(200);
+    expect(bobTickets.body.tickets).toHaveLength(1);
+    expect(aliceTickets.body.tickets[0].id).not.toBe(bobTickets.body.tickets[0].id);
   });
 });

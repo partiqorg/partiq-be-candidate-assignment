@@ -44,7 +44,15 @@ npm test
 
 You should see green tests on a fresh checkout. If they don't pass, flag it.
 
+TypeScript is strict in both workspaces. To check types without running:
+
+```bash
+npm run typecheck
+```
+
 ## The assignment
+
+Read **both** steps before you start coding. Your Step 1 design will be load-bearing for Step 2 — picking the easiest possible cart now usually means rewriting it later.
 
 ### Step 1 — Cart
 
@@ -69,7 +77,15 @@ Requirements:
 - If payment fails, the user cancels, or the 60s elapses, the reservation is released and the quota returns.
 - Two simultaneous reservations for the same last seat must **not** both succeed.
 
-Tests: at minimum, think through what should be tested and write at least one test that covers reservation behaviour. If you run short on time, document what you would have tested and why.
+Tests: write at least one test that **demonstrates two concurrent reservations of the last seat cannot both succeed**. If you run short on time, leave a clear comment in the test file describing what else you'd cover and why.
+
+#### Things we deliberately left fuzzy
+
+The spec above is what we'll grade against. A few things are intentionally underspecified — pick a defensible answer and either ask us during the session or document the choice in code:
+
+- What happens when a user "cancels"? Cancel one item from the cart, or release the whole cart? Is there an explicit endpoint, or is closing the tab enough?
+- Does adding a new item to the cart extend the 60-second TTL on existing items, or is each item's clock independent?
+- If the same user reserves the same ticket type twice in quick succession, is that one reservation or two?
 
 ### Step 3 — Discussion
 
@@ -91,6 +107,7 @@ We may interleave short design conversations between Steps 1 and 2.
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/health` | Liveness probe. Returns `{ ok: true }`. |
 | GET | `/api/events` | List events |
 | GET | `/api/events/:id` | One event with ticket types and remaining counts |
 | POST | `/api/tickets/purchase` | Buy one ticket. Body: `{ eventId, ticketTypeId, payment: { cardNumber } }`. Charges payment then creates ticket. |

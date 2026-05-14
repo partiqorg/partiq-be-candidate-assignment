@@ -50,6 +50,11 @@ export function seed() {
     'INSERT INTO ticket_types (id, event_id, name, color, price_cents, quota) VALUES (?, ?, ?, ?, ?, ?)'
   );
 
+  const insertTicket = db.prepare(
+    `INSERT INTO tickets (id, event_id, ticket_type_id, owner_email, purchased_at, charge_id)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+
   const tx = db.transaction(() => {
     for (const e of events) {
       insertEvent.run(e.id, e.name, e.venue, e.startsAt);
@@ -57,6 +62,14 @@ export function seed() {
         insertType.run(t.id, e.id, t.name, t.color, t.priceCents, t.quota);
       }
     }
+    insertTicket.run(
+      'tkt_seed_demo',
+      'evt_indie',
+      'tt_indie_regular',
+      'demo@partiq.local',
+      '2026-05-01T12:00:00.000Z',
+      'ch_seed_demo'
+    );
   });
 
   tx();
