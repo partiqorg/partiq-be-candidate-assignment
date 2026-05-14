@@ -1,0 +1,23 @@
+{
+  "name": "be-candidate-assignment",
+  "private": true,
+  "version": "0.1.0",
+  "description": "partiq backend candidate assignment",
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev --workspace=server\" \"npm:dev --workspace=web\"",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspace=server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "reset-db": "npm run reset-db --workspace=server"
+  },
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
